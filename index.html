@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>유럽 여행 일정 지도 2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+<style>
+:root {
+  --cream: #f5f0e8;
+  --ink: #1a1208;
+  --gold: #c8993a;
+  --slate: #4a5568;
+  --paper: #faf7f2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Noto Serif KR', serif;
+  background: var(--cream);
+  color: var(--ink);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+header {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 3px solid var(--gold);
+}
+.header-title { display: flex; align-items: baseline; gap: 12px; }
+.header-title h1 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); }
+.header-title span { font-size: 11px; color: #9a8878; letter-spacing: 2px; text-transform: uppercase; }
+.header-info { font-size: 11px; color: #9a8878; }
+.day-selector {
+  background: var(--paper);
+  border-bottom: 1px solid rgba(200,153,58,0.3);
+  padding: 8px 14px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.day-selector::-webkit-scrollbar { display: none; }
+.day-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1.5px solid rgba(200,153,58,0.4);
+  color: var(--slate);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.day-btn:hover { border-color: var(--gold); color: var(--ink); background: rgba(200,153,58,0.08); }
+.day-btn.active { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 700; }
+.day-btn.all-btn.active { background: var(--ink); border-color: var(--ink); }
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.sidebar {
+  flex-shrink: 0;
+  background: var(--paper);
+  border-bottom: 1px solid rgba(200,153,58,0.25);
+  height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) transparent;
+}
+.sidebar-inner {
+  display: flex;
+  flex-direction: row;
+  min-height: 100%;
+}
+.sidebar-header {
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid rgba(200,153,58,0.2);
+  background: var(--paper);
+  flex-shrink: 0;
+  min-width: 160px;
+  border-right: 1px solid rgba(200,153,58,0.15);
+}
+.sidebar-header h2 { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--ink); }
+.sidebar-header p { font-size: 11px; color: var(--slate); margin-top: 2px; }
+#placeList {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  align-items: flex-start;
+  padding: 6px 4px;
+  gap: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) transparent;
+  flex: 1;
+}
+.place-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  border-left: none;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 160px;
+  max-width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(200,153,58,0.1);
+  align-self: stretch;
+}
+.place-item:hover { background: rgba(200,153,58,0.06); border-bottom-color: var(--gold); }
+.place-item.highlighted { background: rgba(200,153,58,0.12); border-bottom-color: var(--gold); }
+.place-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-size: 10px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-weight: 700;
+}
+.place-info { flex: 1; }
+.place-name { font-size: 12px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+.place-desc { font-size: 10px; color: var(--slate); margin-top: 2px; line-height: 1.4; }
+.place-time { font-size: 10px; color: var(--gold); margin-top: 2px; font-weight: 600; }
+.day-group-header {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-right: 1px solid rgba(200,153,58,0.2);
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  background: rgba(200,153,58,0.04);
+}
+#mapContainer { flex: 1; position: relative; min-height: 0; }
+#leafletMap { width: 100%; height: 100%; }
+.map-legend {
+  position: absolute;
+  bottom: 20px; right: 10px;
+  background: rgba(26,18,8,0.88);
+  color: var(--cream);
+  padding: 10px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  font-size: 11px;
+  z-index: 500;
+  pointer-events: none;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.legend-title { color: var(--gold); font-weight: 700; margin-bottom: 6px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+/* Leaflet popup overrides */
+.leaflet-popup-content-wrapper {
+  background: #1a1208 !important;
+  color: #f5f0e8 !important;
+  border-radius: 8px !important;
+  border: 1px solid #c8993a !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.45) !important;
+}
+.leaflet-popup-tip-container .leaflet-popup-tip { background: #1a1208 !important; }
+.leaflet-popup-content { margin: 12px 15px !important; font-family: 'Noto Serif KR', serif !important; }
+.pu-day { font-size: 10px; color: #c8993a; letter-spacing: 1px; margin-bottom: 3px; }
+.pu-name { font-family: 'Playfair Display', serif; font-size: 15px; color: #f5f0e8; margin-bottom: 5px; line-height: 1.3; }
+.pu-detail { font-size: 11px; color: #c8b89a; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>유럽 여행 일정</h1>
+    <span>2025. 6. 11 — 6. 20</span>
+  </div>
+  <div class="header-info">로마 → 돌로미티 → 밤베르크 → 뉘른베르크</div>
+</header>
+
+<div class="day-selector" id="daySelector"></div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <h2 id="sidebarTitle">전체 일정</h2>
+        <p id="sidebarSub">장소 클릭 시 지도 이동</p>
+      </div>
+      <div id="placeList"></div>
+    </div>
+  </div>
+  <div id="mapContainer">
+    <div id="leafletMap"></div>
+    <div class="map-legend" id="mapLegend"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script>
+(function() {
+  var DAY_COLORS = [
+    '#c8993a','#b84a2e','#4a7c59','#2e6b8a','#7a4a8a',
+    '#8a6a2e','#2e7a6a','#6a2e4a','#4a2e8a','#3a6a2e'
+  ];
+
+  var DAYS = [
+    {
+      day:1, label:'1일차', date:'6월 11일', region:'로마',
+      places:[
+        {name:'인천국제공항', desc:'10:50 출발, 에어차이나', time:'10:50', lat:37.4602, lng:126.4407, type:'✈️'},
+        {name:'로마 피우미치노 공항', desc:'18:30 도착, 공항 픽업', time:'18:30', lat:41.7999, lng:12.2462, type:'✈️'},
+        {name:'숙소 Domus Domitia', desc:'Vicolo Domizio 4b, Roma', time:'19:30', lat:41.8967, lng:12.4663, type:'🏨'},
+        {name:'Pizza in Trevi', desc:'저녁식사 예약완료', time:'21:00', lat:41.9009, lng:12.4833, type:'🍽️'},
+      ]
+    },
+    {
+      day:2, label:'2일차', date:'6월 12일', region:'바티칸 · 로마',
+      places:[
+        {name:'바티칸 박물관', desc:'바티칸 투어 (4명)', time:'08:00', lat:41.9065, lng:12.4536, type:'🏛️'},
+        {name:'산 피에트로 대성당', desc:'바티칸 시국', time:'10:00', lat:41.9022, lng:12.4539, type:'🏛️'},
+        {name:'스페인 계단 · 핀초 언덕', desc:'노을 감상', time:'19:30', lat:41.9059, lng:12.4823, type:'🌅'},
+      ]
+    },
+    {
+      day:3, label:'3일차', date:'6월 13일', region:'로마',
+      places:[
+        {name:'포로 로마노 · 팔라티노', desc:'09:00 – 11:20', time:'09:00', lat:41.8925, lng:12.4853, type:'🏛️'},
+        {name:'콜로세움', desc:'예약 완료', time:'11:30', lat:41.8902, lng:12.4922, type:'🏛️'},
+        {name:'판테온', desc:'15:00 – 16:00', time:'15:00', lat:41.8986, lng:12.4769, type:'🏛️'},
+        {name:'산티냐치오 교회', desc:'판테온 도보 3분', time:'16:00', lat:41.8988, lng:12.4800, type:'⛪'},
+        {name:'Il Convivio Troiani (미슐랭)', desc:'저녁 식사', time:'19:30', lat:41.8999, lng:12.4679, type:'🍽️'},
+      ]
+    },
+    {
+      day:4, label:'4일차', date:'6월 14일', region:'로마 → 볼차노',
+      places:[
+        {name:'로마 테르미니역', desc:'08:50 출발 기차', time:'08:50', lat:41.9012, lng:12.5014, type:'🚂'},
+        {name:'볼차노 공항 (렌터카 픽업)', desc:'14:00 도착 및 렌터카 수령', time:'14:00', lat:46.4602, lng:11.3264, type:'🚗'},
+        {name:'바스 광장 (Piazza delle Erbe)', desc:'볼차노 시내 구경', time:'15:30', lat:46.4983, lng:11.3534, type:'🏙️'},
+        {name:'숙소 (Presule)', desc:'Via Presule 14', time:'17:30', lat:46.4763, lng:11.4672, type:'🏨'},
+      ]
+    },
+    {
+      day:5, label:'5일차', date:'6월 15일', region:'돌로미티',
+      places:[
+        {name:'세체다 (Seceda)', desc:'케이블카 트레킹, 오들레 산맥 전망', time:'09:00', lat:46.5703, lng:11.6895, type:'🏔️'},
+        {name:'알페디시우시 (Alpe di Siusi)', desc:'E-Bike 라이딩', time:'13:00', lat:46.5384, lng:11.6317, type:'🚵'},
+        {name:'카레짜 호수 (Lago di Carezza)', desc:'엔로사디라 현상 감상', time:'18:30', lat:46.4097, lng:11.5756, type:'🌊'},
+      ]
+    },
+    {
+      day:6, label:'6일차', date:'6월 16일', region:'돌로미티',
+      places:[
+        {name:'브라이에스 호수 (Lago di Braies)', desc:'나룻배 체험, 보트 55유로', time:'10:30', lat:46.6946, lng:12.0836, type:'⛵'},
+        {name:'펀봅 (Fun Bob Auronzo)', desc:'22유로, San Candido', time:'14:00', lat:46.7333, lng:12.2826, type:'🎿'},
+        {name:'산타 막달레나 뷰포인트', desc:'오들레 산맥 배경 성당 인생샷', time:'17:00', lat:46.6322, lng:11.7227, type:'📸'},
+      ]
+    },
+    {
+      day:7, label:'7일차', date:'6월 17일', region:'코르티나 · 트레치메',
+      places:[
+        {name:'유네스코 돌로미티 재단', desc:'코르티나 담페초, 관계자 면담', time:'10:30', lat:46.5368, lng:12.1351, type:'⭐'},
+        {name:'코르티나 담페초 시내', desc:'시내 구경 및 점심', time:'11:30', lat:46.5404, lng:12.1357, type:'🏙️'},
+        {name:'트레치메 디 라바레도', desc:'주차장 예약완료, 트레킹 왕복 1.5h', time:'14:00', lat:46.6179, lng:12.3004, type:'🏔️'},
+      ]
+    },
+    {
+      day:8, label:'8일차', date:'6월 18일', region:'볼차노 → 뮌헨 → 밤베르크',
+      places:[
+        {name:'볼차노역 (렌터카 반납)', desc:'10:36 출발 기차', time:'10:36', lat:46.4983, lng:11.3534, type:'🚂'},
+        {name:'뮌헨 중앙역', desc:'14:35 도착', time:'14:35', lat:48.1402, lng:11.5580, type:'🚂'},
+        {name:'Augustiner-Keller', desc:'양조장, Arnulfstraße 52', time:'15:00', lat:48.1447, lng:11.5487, type:'🍺'},
+        {name:'알리안츠 아레나', desc:'바이에른 뮌헨 경기장', time:'16:30', lat:48.2188, lng:11.6247, type:'⚽'},
+        {name:'밤베르크 숙소', desc:'Hornthalstraße 3, Bamberg', time:'19:00', lat:49.8988, lng:10.9028, type:'🏨'},
+      ]
+    },
+    {
+      day:9, label:'9일차', date:'6월 19일', region:'뷔르츠부르크 · 로텐부르크 · 뉘른베르크',
+      places:[
+        {name:'뷔르츠부르크 궁전', desc:'09:00 – 09:30', time:'09:00', lat:49.7931, lng:9.9307, type:'🏰'},
+        {name:'로텐부르크 시내', desc:'10:30 – 13:30 구경 및 점심', time:'10:30', lat:49.3774, lng:10.1797, type:'🏘️'},
+        {name:'뉘른베르크 전범재판 기념관', desc:'Bärenschanzstraße 72', time:'15:00', lat:49.4564, lng:11.0566, type:'⭐'},
+        {name:'Bratwursthäusle', desc:'소시지+맥주 저녁, Rathauspl. 1', time:'17:30', lat:49.4566, lng:11.0768, type:'🍺'},
+        {name:'Meistersingerhalle', desc:'뉘른베르크 오케스트라 공연 19:00', time:'19:00', lat:49.4417, lng:11.1008, type:'🎼'},
+      ]
+    },
+    {
+      day:10, label:'10일차', date:'6월 20일', region:'뮌헨 공항 → 인천',
+      places:[
+        {name:'뮌헨 국제공항', desc:'렌터카 반납, 13:00 에어차이나 출발', time:'09:30', lat:48.3537, lng:11.7750, type:'✈️'},
+        {name:'인천국제공항 (도착)', desc:'귀국', time:'익일', lat:37.4602, lng:126.4407, type:'🏠'},
+      ]
+    },
+  ];
+
+  // ── Init Leaflet map ──────────────────────────
+  var leafletMap = L.map('leafletMap', { zoomControl: true });
+
+  // 타일 서버 후보 목록 — 앞에서부터 순서대로 시도
+  var TILE_PROVIDERS = [
+    {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      opts: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19, crossOrigin: true }
+    },
+    {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      opts: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19, subdomains: 'abc', crossOrigin: true }
+    },
+    {
+      url: 'https://tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+      opts: { attribution: '&copy; OpenStreetMap France', maxZoom: 20, crossOrigin: true }
+    }
+  ];
+
+  var tileProviderIndex = 0;
+  var activeTileLayer = null;
+
+  function loadTileProvider(idx) {
+    if (idx >= TILE_PROVIDERS.length) return;
+    var p = TILE_PROVIDERS[idx];
+    var layer = L.tileLayer(p.url, p.opts);
+    var tested = false;
+
+    layer.on('tileerror', function() {
+      if (tested) return;
+      tested = true;
+      leafletMap.removeLayer(layer);
+      loadTileProvider(idx + 1);
+    });
+
+    layer.on('tileload', function() {
+      tested = true; // 하나라도 성공하면 이 provider 유지
+    });
+
+    layer.addTo(leafletMap);
+    activeTileLayer = layer;
+  }
+
+  loadTileProvider(tileProviderIndex);
+
+  var activeMarkers = [];
+  var activeLines = [];
+  var currentDay = 'all';
+
+  function makeIcon(num, color) {
+    return L.divIcon({
+      className: '',
+      html: '<div style="background:' + color + ';border:2.5px solid #fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.35);">' + num + '</div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -18]
+    });
+  }
+
+  function clearMapLayers() {
+    activeMarkers.forEach(function(m) { leafletMap.removeLayer(m); });
+    activeLines.forEach(function(l) { leafletMap.removeLayer(l); });
+    activeMarkers = [];
+    activeLines = [];
+  }
+
+  function renderDay(dayFilter) {
+    clearMapLayers();
+    var toShow = dayFilter === 'all' ? DAYS : DAYS.filter(function(d){ return d.day === dayFilter; });
+    var bounds = [];
+
+    toShow.forEach(function(d) {
+      var color = DAY_COLORS[d.day - 1];
+      var coords = d.places.map(function(p){ return [p.lat, p.lng]; });
+
+      if (coords.length > 1) {
+        var line = L.polyline(coords, {color: color, weight: 2.5, opacity: 0.55, dashArray: '6,5'}).addTo(leafletMap);
+        activeLines.push(line);
+      }
+
+      d.places.forEach(function(p, i) {
+        bounds.push([p.lat, p.lng]);
+        var marker = L.marker([p.lat, p.lng], {icon: makeIcon(i + 1, color)}).addTo(leafletMap);
+        marker.bindPopup(
+          '<div class="pu-day">' + d.day + '일차 · ' + d.date + ' · ' + d.region + '</div>' +
+          '<div class="pu-name">' + p.type + ' ' + p.name + '</div>' +
+          '<div class="pu-detail">' + p.desc + (p.time ? '<br>🕐 ' + p.time : '') + '</div>',
+          {maxWidth: 240}
+        );
+        marker._dayIdx = d.day;
+        marker._placeIdx = i;
+        activeMarkers.push(marker);
+      });
+    });
+
+    if (bounds.length > 0) {
+      var maxZoom = (dayFilter === 'all') ? 5 : 12;
+      leafletMap.fitBounds(bounds, {padding: [40, 40], maxZoom: maxZoom});
+    }
+
+    updateSidebar(toShow);
+    updateLegend(toShow);
+  }
+
+  function updateSidebar(toShow) {
+    var titleEl = document.getElementById('sidebarTitle');
+    var subEl = document.getElementById('sidebarSub');
+    var listEl = document.getElementById('placeList');
+
+    if (currentDay === 'all') {
+      titleEl.textContent = '전체 일정';
+      var total = toShow.reduce(function(a,d){ return a + d.places.length; }, 0);
+      subEl.textContent = '총 ' + total + '개 장소';
+    } else {
+      titleEl.textContent = toShow[0].label + ': ' + toShow[0].region;
+      subEl.textContent = toShow[0].date;
+    }
+
+    listEl.innerHTML = '';
+
+    toShow.forEach(function(d) {
+      var color = DAY_COLORS[d.day - 1];
+      if (currentDay === 'all') {
+        var hdr = document.createElement('div');
+        hdr.className = 'day-group-header';
+        hdr.style.color = color;
+        hdr.textContent = d.label + ' · ' + d.date + ' · ' + d.region;
+        listEl.appendChild(hdr);
+      }
+
+      d.places.forEach(function(p, i) {
+        var item = document.createElement('div');
+        item.className = 'place-item';
+
+        var numEl = document.createElement('div');
+        numEl.className = 'place-num';
+        numEl.style.background = color;
+        numEl.textContent = i + 1;
+
+        var infoEl = document.createElement('div');
+        infoEl.className = 'place-info';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'place-name';
+        nameEl.textContent = p.type + ' ' + p.name;
+
+        var descEl = document.createElement('div');
+        descEl.className = 'place-desc';
+        descEl.textContent = p.desc;
+
+        infoEl.appendChild(nameEl);
+        infoEl.appendChild(descEl);
+
+        if (p.time) {
+          var timeEl = document.createElement('div');
+          timeEl.className = 'place-time';
+          timeEl.textContent = '🕐 ' + p.time;
+          infoEl.appendChild(timeEl);
+        }
+
+        item.appendChild(numEl);
+        item.appendChild(infoEl);
+
+        (function(placeData, dayData, placeIdx) {
+          item.addEventListener('click', function() {
+            document.querySelectorAll('.place-item').forEach(function(el){ el.classList.remove('highlighted'); });
+            item.classList.add('highlighted');
+            leafletMap.setView([placeData.lat, placeData.lng], 14);
+            var marker = activeMarkers.find(function(m){ return m._dayIdx === dayData.day && m._placeIdx === placeIdx; });
+            if (marker) marker.openPopup();
+          });
+        })(p, d, i);
+
+        listEl.appendChild(item);
+      });
+    });
+  }
+
+  function updateLegend(toShow) {
+    var legend = document.getElementById('mapLegend');
+    var html = '<div class="legend-title">일정</div>';
+    toShow.forEach(function(d) {
+      html += '<div class="legend-item"><div class="legend-dot" style="background:' + DAY_COLORS[d.day-1] + ';"></div><span>' + d.label + ' ' + d.date + '</span></div>';
+    });
+    legend.innerHTML = html;
+  }
+
+  // ── Day selector buttons ────────────────────────
+  var selector = document.getElementById('daySelector');
+
+  var allBtn = document.createElement('button');
+  allBtn.className = 'day-btn all-btn active';
+  allBtn.textContent = '전체';
+  allBtn.addEventListener('click', function() {
+    currentDay = 'all';
+    document.querySelectorAll('.day-btn').forEach(function(b){ b.classList.remove('active'); });
+    allBtn.classList.add('active');
+    renderDay('all');
+  });
+  selector.appendChild(allBtn);
+
+  DAYS.forEach(function(d) {
+    var btn = document.createElement('button');
+    btn.className = 'day-btn';
+    btn.style.borderColor = DAY_COLORS[d.day - 1];
+    btn.innerHTML = '<span style="color:' + DAY_COLORS[d.day-1] + ';font-weight:700;">' + d.label + '</span> ' + d.date;
+    btn.addEventListener('click', function() {
+      currentDay = d.day;
+      document.querySelectorAll('.day-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderDay(d.day);
+    });
+    selector.appendChild(btn);
+  });
+
+  // ── Initial render ──────────────────────────────
+  setTimeout(function() { leafletMap.invalidateSize(); }, 100);
+  renderDay('all');
+
+})();
+</script>
+</body>
+</html>
